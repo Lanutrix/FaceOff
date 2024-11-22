@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import video
+from app.routers import video
 
 # Создание экземпляра FastAPI приложения
 app = FastAPI(

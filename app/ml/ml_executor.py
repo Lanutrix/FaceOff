@@ -1,5 +1,5 @@
 
-from tools.object_detector import MLObjectDetector
+from app.ml.tools.object_detector import MLObjectDetector
 import queue
 import threading
 import time
@@ -163,6 +163,12 @@ class MLExecutor:
             except Exception as e:
                 # Неожиданная ошибка в рабочем потоке
                 print(f"Ошибка в рабочем потоке: {e}")
+
+processor = MLExecutor()
+processor.start()
+
+def get_ml_eecutor():
+    return processor
 
 # Пример использования
 if __name__ == "__main__":

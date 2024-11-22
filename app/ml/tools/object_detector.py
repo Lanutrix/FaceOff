@@ -1,5 +1,5 @@
-from tools.model import Model
-from tools.write_box import BoxProcessor
+from app.ml.tools.model import Model
+from app.ml.tools.write_box import BoxProcessor
 from typing import List, Tuple, Optional, Union
 import cv2
 import numpy as np

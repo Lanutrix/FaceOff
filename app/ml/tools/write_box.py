@@ -7,7 +7,7 @@ class BoxProcessor:
     
     @staticmethod
     def draw_boxes(image: np.ndarray, boxes_info: List[dict],
-                   blur_ksize: Tuple[int, int] = (55, 55)) -> np.ndarray:
+                   blur_ksize: Tuple[int, int] = (555, 555)) -> np.ndarray:
         """
         Применение размытия внутри бокса на изображении
         

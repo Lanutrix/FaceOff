@@ -2,8 +2,9 @@ import os
 from pathlib import Path
 from fastapi import APIRouter, Depends, UploadFile, HTTPException
 
-from tools.generate_name_file import generate_name_file
-from schemas import uploadfile
+from app.tools.generate_name_file import generate_name_file
+from app.schemas import uploadfile
+from app.ml.ml_executor import get_ml_eecutor, MLExecutor
 
 router = APIRouter()
 
@@ -13,8 +14,10 @@ UPLOAD_FOLDER = "uploads"
 # Создаём папку, если её нет
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+
+
 @router.post("/uploadfile", response_model=uploadfile.ResponseData)
-async def create_upload_file(file: UploadFile):
+async def create_upload_file(file: UploadFile, ml_eecutor: MLExecutor = Depends(get_ml_eecutor)):
     contents = await file.read()
 
     file_ext = file.filename.split('.')[-1].lower()
@@ -32,6 +35,13 @@ async def create_upload_file(file: UploadFile):
             f.write(contents)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка при сохранении файла: {str(e)}")
+    
+    # Обработка файла
+    try:
+        if not ml_eecutor.add_to_queue(file_path):
+            raise "невозможно записать в очередь"
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка при добавлении файла в очередь: {str(e)}")
     
     return uploadfile.ResponseData(filename=file_name,
                                    content_length=len(contents),
