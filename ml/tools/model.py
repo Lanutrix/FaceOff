@@ -1,3 +1,5 @@
+import os
+
 from ultralytics import YOLO
 from typing import List
 
@@ -20,7 +22,8 @@ class Model:
     def load_model(self):
         """Загрузка модели YOLO"""
         try:
-            self.model = YOLO(self.model_path)
+            os.environ['YOLO_VERBOSE'] = 'False'  # Глобальное отключение вывода
+            self.model = YOLO(self.model_path, verbose=False)
             self.class_names = self.model.names
             print(f"Модель успешно загружена из {self.model_path}")
         except Exception as e:
@@ -40,7 +43,7 @@ class Model:
         if self.model is None:
             raise ValueError("Модель не загружена. Вызовите load_model() сначала")
             
-        results = self.model(image_source, conf=self.confidence_threshold)
+        results = self.model(image_source, conf=self.confidence_threshold, verbose=False)
         return results
     
     def extract_boxes(self, results) -> List[dict]:

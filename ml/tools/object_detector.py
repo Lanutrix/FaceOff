@@ -1,5 +1,5 @@
-from ml.tools.model import Model
-from ml.tools.write_box import BoxProcessor
+from tools.model import Model
+from tools.write_box import BoxProcessor
 from typing import List, Tuple, Optional, Union
 import cv2
 import numpy as np
@@ -115,8 +115,6 @@ class MLObjectDetector:
                 out.write(processed_frame)
                 
                 frame_count += 1
-                if frame_count % 30 == 0:  # Прогресс каждые 30 кадров
-                    print(f"Обработано кадров: {frame_count}/{total_frames}")
 
         finally:
             cap.release()
@@ -160,7 +158,7 @@ class MLObjectDetector:
                 output_path, 
                 codec='libx264',
                 audio_codec='aac',
-                temp_audiofile='temp-audio.m4a',
+                temp_audiofile='{output_path}-temp-audio.m4a',
                 remove_temp=True
             )
             
