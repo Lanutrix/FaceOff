@@ -180,11 +180,13 @@ class MLObjectDetector:
         """
         Универсальный метод для обработки файлов (изображений или видео)
         """
+        file_path = f"uploads/{file_path}"
+        
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Файл не найден: {file_path}")
         
         # Определяем тип файла по расширению
-        file_ext = os.path.splitext(file_path)[1].lower()
+        file_ext = os.path.splitext(file_path)[-1].lower()
         
         # Поддерживаемые форматы
         image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif'}

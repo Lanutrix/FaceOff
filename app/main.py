@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.routers import video
 
@@ -18,6 +19,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Монтирование папки uploads для раздачи медиафайлов
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Основной маршрут
 @app.get("/")

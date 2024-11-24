@@ -75,7 +75,6 @@ class MLExecutor:
                 "error": None,
                 "result": None
             }
-            
         self._file_queue.put(filename)
         return True
         
@@ -138,7 +137,7 @@ class MLExecutor:
                 try:
                     # Выполняем обработку файла
                     result = self.detector.process_file(filename, min_area=500, min_confidence=0.7)
-                    
+                    result = result.replace('\\', '/')
                     # Обновляем статус на "завершено"
                     with self._status_lock:
                         if filename in self._file_statuses:
@@ -167,7 +166,7 @@ class MLExecutor:
 processor = MLExecutor()
 processor.start()
 
-def get_ml_eecutor():
+def get_ml_executor():
     return processor
 
 # Пример использования
