@@ -2,12 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import video
+from app.routers import video, auth
+from app.db.database import engine, Base
+
+# Создание таблиц
+Base.metadata.create_all(bind=engine)
 
 # Создание экземпляра FastAPI приложения
 app = FastAPI(
     title="My API",
-    description="API с поддержкой CORS и автодокументацией",
+    description="API с поддержкой CORS и JWT авторизацией",
     version="1.0.0"
 )
 
@@ -27,8 +31,9 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 async def read_root():
     return {"message": "Hello World"}
 
-# Подключаем REST API роутеры
-app.include_router(video.router, tags=["api"])
+# Подключаем роутеры
+app.include_router(auth.router)
+app.include_router(video.router, prefix="/api", tags=["api"])
 
 if __name__ == "__main__":
     import uvicorn

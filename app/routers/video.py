@@ -1,10 +1,13 @@
 import os
-from pathlib import Path
 from fastapi import APIRouter, Depends, UploadFile, HTTPException
 
 from app.tools.generate_name_file import generate_name_file
 from app.schemas import uploadfile
 from app.ml.ml_executor import get_ml_executor, MLExecutor
+from app.db.func import *
+from app.db.models.user import User
+from app.db.func import get_current_user
+
 
 router = APIRouter()
 
@@ -15,9 +18,12 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 SUPPORTED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'bmp', 'tiff', 'tif', 'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'}
 
-
 @router.post("/uploadfile", response_model=uploadfile.ResponseData)
-async def create_upload_file(file: UploadFile, ml_executor: MLExecutor = Depends(get_ml_executor)):
+async def create_upload_file(
+    file: UploadFile, 
+    current_user: User = Depends(get_current_user),
+    ml_executor: MLExecutor = Depends(get_ml_executor)
+):
     contents = await file.read()
     
     file_ext = file.filename.split('.')[-1].lower()
@@ -47,8 +53,6 @@ async def create_upload_file(file: UploadFile, ml_executor: MLExecutor = Depends
             status_code=500, 
             detail=f"Ошибка: невозможно добавить файл в очередь обработки"
         )
-
-        
     
     return uploadfile.ResponseData(
         filename=file_name,
@@ -58,20 +62,22 @@ async def create_upload_file(file: UploadFile, ml_executor: MLExecutor = Depends
 
 
 @router.post("/check_status_file", response_model=uploadfile.AnswerGetStatusFile)
-async def check_upload_file(file: uploadfile.GetStatusFile, ml_eecutor: MLExecutor = Depends(get_ml_executor)):
+async def check_upload_file(
+    file: uploadfile.GetStatusFile,
+    current_user: User = Depends(get_current_user),
+    ml_executor: MLExecutor = Depends(get_ml_executor)
+):
     filename = file.filename
     file_ext = filename.split('.')[-1].lower()
+    
     # Поддерживаемые форматы
-
     if file_ext not in SUPPORTED_EXTENSIONS:
         raise HTTPException(status_code=500, detail=f"Ошибка в формате файла: расширение {file_ext} неподдерживается")
-
     
     # Обработка файла
-    status_data = ml_eecutor.get_status(filename)
+    status_data = ml_executor.get_status(filename)
 
     if status_data is None:
         raise HTTPException(status_code=500, detail=f"Ошибка чтения из очереди: файл отсутствует")
    
-    
     return uploadfile.AnswerGetStatusFile(**status_data)
