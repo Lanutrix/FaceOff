@@ -18,4 +18,4 @@ docker compose up -d # Запуск приложения + бд
 ```
 
 ## Диплом победителя
-![Диплом победителя](media/winners_diploma.jpg)
+![Диплом победителя](media/diplom.jpg)

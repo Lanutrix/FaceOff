@@ -13,6 +13,7 @@ models/
 *.mkv
 *.wmv
 *.flv
+!media/*
 
 
 # Byte-compiled / optimized / DLL files
