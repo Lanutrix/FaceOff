@@ -4,9 +4,6 @@ from fastapi import APIRouter, Depends, UploadFile, HTTPException
 from app.tools.generate_name_file import generate_name_file
 from app.schemas import uploadfile
 from app.ml.ml_executor import get_ml_executor, MLExecutor
-from app.db.func import *
-from app.db.models.user import User
-from app.db.func import get_current_user
 
 
 router = APIRouter()
@@ -20,8 +17,7 @@ SUPPORTED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'bmp', 'tiff', 'tif', 'mp4', 'avi'
 
 @router.post("/uploadfile", response_model=uploadfile.ResponseData)
 async def create_upload_file(
-    file: UploadFile, 
-    current_user: User = Depends(get_current_user),
+    file: UploadFile,
     ml_executor: MLExecutor = Depends(get_ml_executor)
 ):
     contents = await file.read()
@@ -64,7 +60,6 @@ async def create_upload_file(
 @router.post("/check_status_file", response_model=uploadfile.AnswerGetStatusFile)
 async def check_upload_file(
     file: uploadfile.GetStatusFile,
-    current_user: User = Depends(get_current_user),
     ml_executor: MLExecutor = Depends(get_ml_executor)
 ):
     filename = file.filename
