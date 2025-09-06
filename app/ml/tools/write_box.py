@@ -1,38 +1,50 @@
-from typing import List, Tuple, Optional
+from typing import List
 import cv2
 import numpy as np
 
+
 class BoxProcessor:
     """Класс для обработки и визуализации боксов с помощью OpenCV"""
-    
+
     @staticmethod
     def draw_boxes(image: np.ndarray, boxes_info: List[dict],
-                   blur_ksize: Tuple[int, int] = (555, 555)) -> np.ndarray:
+                   blur_amount: int = 50, blur_type: str = "gaus") -> np.ndarray:
         """
         Применение размытия внутри бокса на изображении
-        
+
         Args:
             image: Изображение в формате numpy array
             boxes_info: Информация о боксах
-            blur_ksize: Размер ядра для размытия (ширина, высота)
-            
+            blur_amount: Степень размытия от 1 до 100
+            blur_type: Тип размытия: "gaus" или "pixelization"
+
         Returns:
             Изображение с размытыми боксами
         """
         result_image = image.copy()
-        
+
         for box in boxes_info:
-            x_min, y_min, x_max, y_max = box['coordinates']
-            
+            x_min, y_min, x_max, y_max = box["coordinates"]
+
             # Вырезаем область бокса
             roi = result_image[y_min:y_max, x_min:x_max]
-            
-            # Применяем размытие к области
-            blurred_roi = cv2.GaussianBlur(roi, blur_ksize, 0)
-            
+
+            if blur_type == "pixelization":
+                # Пикселизация: уменьшаем размер и возвращаем обратно
+                h, w = roi.shape[:2]
+                # Чем выше blur_amount, тем сильнее уменьшение
+                down_w = max(1, w // max(1, blur_amount))
+                down_h = max(1, h // max(1, blur_amount))
+                temp = cv2.resize(roi, (down_w, down_h), interpolation=cv2.INTER_LINEAR)
+                blurred_roi = cv2.resize(temp, (w, h), interpolation=cv2.INTER_NEAREST)
+            else:
+                # Гауссово размытие
+                k = max(1, int(blur_amount) * 2 + 1)  # ядро должно быть нечетным
+                blurred_roi = cv2.GaussianBlur(roi, (k, k), 0)
+
             # Вставляем размытый бокс обратно в изображение
-            result_image[y_min:y_max, x_min:x_max] = blurred_roi          
-        
+            result_image[y_min:y_max, x_min:x_max] = blurred_roi
+
         return result_image
     
     @staticmethod

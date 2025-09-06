@@ -4,7 +4,7 @@ import queue
 import threading
 import time
 from enum import Enum
-from typing import Callable, Optional, Dict, Any
+from typing import Optional, Dict, Any
 
 class FileStatus(Enum):
     """Статусы обработки файлов"""
@@ -49,13 +49,15 @@ class MLExecutor:
         if self._worker_thread:
             self._worker_thread.join()
             
-    def add_to_queue(self, filename: str) -> bool:
+    def add_to_queue(self, filename: str, blur_amount: int, blur_type: str) -> bool:
         """
         Добавить файл в очередь на обработку.
-        
+
         Args:
             filename: Имя файла для обработки
-            
+            blur_amount: Степень размытия от 1 до 100
+            blur_type: Тип размытия
+
         Returns:
             True если файл добавлен, False если уже в обработке
         """
@@ -65,7 +67,7 @@ class MLExecutor:
                 status = self._file_statuses[filename]["status"]
                 if status in [FileStatus.PENDING, FileStatus.PROCESSING]:
                     return False
-                    
+
             # Добавляем файл в очередь
             self._file_statuses[filename] = {
                 "status": FileStatus.PENDING,
@@ -75,7 +77,7 @@ class MLExecutor:
                 "error": None,
                 "result": None
             }
-        self._file_queue.put(filename)
+        self._file_queue.put((filename, blur_amount, blur_type))
         return True
         
     def get_status(self, filename: str) -> Optional[Dict[str, Any]]:
@@ -126,7 +128,7 @@ class MLExecutor:
         while self._running:
             try:
                 # Получаем файл из очереди с таймаутом
-                filename = self._file_queue.get(timeout=1)
+                filename, blur_amount, blur_type = self._file_queue.get(timeout=1)
                 
                 # Обновляем статус на "обрабатывается"
                 with self._status_lock:
@@ -136,7 +138,13 @@ class MLExecutor:
                 
                 try:
                     # Выполняем обработку файла
-                    result = self.detector.process_file(filename, min_area=500, min_confidence=0.7)
+                    result = self.detector.process_file(
+                        filename,
+                        min_area=500,
+                        min_confidence=0.7,
+                        blur_amount=blur_amount,
+                        blur_type=blur_type,
+                    )
                     result = result.replace('\\', '/')
                     # Обновляем статус на "завершено"
                     with self._status_lock:
@@ -179,7 +187,7 @@ if __name__ == "__main__":
     # Добавляем файлы в очередь
     files = ["image.jpg", "video.mp4"]
     for file in files:
-        success = processor.add_to_queue(file)
+        success = processor.add_to_queue(file, 50, "gaus")
         print(f"Файл {file} {'добавлен' if success else 'уже в обработке'}")
     
     # Проверяем статусы

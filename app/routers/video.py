@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, Depends, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, HTTPException, Form
 
 from app.tools.generate_name_file import generate_name_file
 from app.schemas import uploadfile
@@ -18,9 +18,18 @@ SUPPORTED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'bmp', 'tiff', 'tif', 'mp4', 'avi'
 @router.post("/uploadfile", response_model=uploadfile.ResponseData)
 async def create_upload_file(
     file: UploadFile,
+    blur_amount: int = Form(..., ge=1, le=100),
+    blur_type: str = Form(...),
     ml_executor: MLExecutor = Depends(get_ml_executor)
 ):
     contents = await file.read()
+
+    blur_type = blur_type.lower()
+    if blur_type not in {"gaus", "pixelization"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Тип блюра должен быть 'gaus' или 'pixelization'"
+        )
     
     file_ext = file.filename.split('.')[-1].lower()
     file_name = generate_name_file(file.filename, file_ext)    
@@ -44,9 +53,9 @@ async def create_upload_file(
         )
     
     # Обработка файла
-    if not ml_executor.add_to_queue(file_name):
+    if not ml_executor.add_to_queue(file_name, blur_amount, blur_type):
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail=f"Ошибка: невозможно добавить файл в очередь обработки"
         )
     

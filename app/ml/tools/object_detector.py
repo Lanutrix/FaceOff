@@ -1,6 +1,6 @@
 from app.ml.tools.model import Model
 from app.ml.tools.write_box import BoxProcessor
-from typing import List, Tuple, Optional, Union
+from typing import List, Optional, Union, Tuple
 import cv2
 import numpy as np
 import os
@@ -27,7 +27,9 @@ class MLObjectDetector:
 
     def detect_objects(self, image_source: Union[str, np.ndarray],
                       min_area: Optional[int] = None,
-                      min_confidence: Optional[float] = None) -> Tuple[List[dict], np.ndarray]:
+                      min_confidence: Optional[float] = None,
+                      blur_amount: int = 50,
+                      blur_type: str = "gaus") -> Tuple[List[dict], np.ndarray]:
         """
         Полный цикл детекции объектов для изображений
         """
@@ -51,18 +53,20 @@ class MLObjectDetector:
             boxes_info = self.box_processor.filter_boxes_by_confidence(boxes_info, min_confidence)
 
         # Рисуем боксы на изображении
-        result_image = self.box_processor.draw_boxes(image, boxes_info)
+        result_image = self.box_processor.draw_boxes(image, boxes_info, blur_amount, blur_type)
 
         return boxes_info, result_image
 
     def process_image(self, image_path: str,
                      min_area: Optional[int] = None,
-                     min_confidence: Optional[float] = None) -> str:
+                     min_confidence: Optional[float] = None,
+                     blur_amount: int = 50,
+                     blur_type: str = "gaus") -> str:
         """
         Обработка изображения с сохранением результата
         """
         boxes_info, result_image = self.detect_objects(
-            image_path, min_area, min_confidence
+            image_path, min_area, min_confidence, blur_amount, blur_type
         )
         
         output_path = self._get_output_filename(image_path)
@@ -73,7 +77,9 @@ class MLObjectDetector:
 
     def process_video(self, video_path: str,
                      min_area: Optional[int] = None,
-                     min_confidence: Optional[float] = None) -> str:
+                     min_confidence: Optional[float] = None,
+                     blur_amount: int = 50,
+                     blur_type: str = "gaus") -> str:
         """
         Обработка видео с сохранением результата и звука
         """
@@ -108,7 +114,7 @@ class MLObjectDetector:
                 
                 # Обрабатываем кадр
                 boxes_info, processed_frame = self.detect_objects(
-                    frame, min_area, min_confidence
+                    frame, min_area, min_confidence, blur_amount, blur_type
                 )
                 
                 # Записываем обработанный кадр
@@ -176,7 +182,9 @@ class MLObjectDetector:
 
     def process_file(self, file_path: str,
                     min_area: Optional[int] = None,
-                    min_confidence: Optional[float] = None) -> str:
+                    min_confidence: Optional[float] = None,
+                    blur_amount: int = 50,
+                    blur_type: str = "gaus") -> str:
         """
         Универсальный метод для обработки файлов (изображений или видео)
         """
@@ -193,8 +201,8 @@ class MLObjectDetector:
         video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv'}
         
         if file_ext in image_extensions:
-            return self.process_image(file_path, min_area, min_confidence)
+            return self.process_image(file_path, min_area, min_confidence, blur_amount, blur_type)
         elif file_ext in video_extensions:
-            return self.process_video(file_path, min_area, min_confidence)
+            return self.process_video(file_path, min_area, min_confidence, blur_amount, blur_type)
         else:
             raise ValueError(f"Неподдерживаемый формат файла: {file_ext}")
