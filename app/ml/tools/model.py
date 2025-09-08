@@ -6,7 +6,7 @@ from typing import List
 class Model:
     """Модуль для работы с YOLO моделью и обработки результатов детекции"""
     
-    def __init__(self, model_path: str = "models/yolov11m-face.pt", confidence_threshold: float = 0.5):
+    def __init__(self, model_path: str = "models/yolov11m-face.pt", confidence_threshold: float = 0.7):
         """
         Инициализация модуля
         

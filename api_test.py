@@ -12,7 +12,7 @@ import requests
 import os
 
 
-def send_file(url: str, file_path: str, blur_amount: int, blur_type: str) -> None:
+def send_file(url: str, file_path: str, options: dict) -> None:
     """Send a file to the API and print the result.
 
     Any :class:`requests.exceptions.RequestException` is caught so the script
@@ -26,10 +26,10 @@ def send_file(url: str, file_path: str, blur_amount: int, blur_type: str) -> Non
         with open(file_path, 'rb') as f:
             files = {'file': f}
             data = {
-                'blur_amount': blur_amount,
-                'blur_type': blur_type
+                'blur_amount': options['intensity'],
+                'blur_type': options['blur_type']
             }
-            r = requests.post(url, files=files, data=data, timeout=30)
+            r = requests.post(url, files=files, data=data, timeout=3000)
             print(f"Статус: {r.status_code}")
             if r.status_code == 200:
                 print(f"Ответ: {r.json()}")
@@ -53,21 +53,36 @@ def run_face_test(url: str) -> None:
     """Тест с изображением лица"""
     print("=== Тест с изображением лица ===")
     file_path = "uploads/i.jpg"
-    send_file(url, file_path, blur_amount=5, blur_type="gaus")
+    options = {
+        'blur_type': 'gaussian',
+        'intensity': 5,
+        'object_types': ['face']
+    }
+    send_file(url, file_path, options)
 
 
 def run_car_test(url: str) -> None:
     """Тест с видео автомобиля"""
     print("=== Тест с видео автомобиля ===")
     file_path = "uploads/v.mp4"
-    send_file(url, file_path, blur_amount=8, blur_type="pixelization")
+    options = {
+        'blur_type': 'pixelate',
+        'intensity': 8,
+        'object_types': ['car', 'truck']
+    }
+    send_file(url, file_path, options)
 
 
 def run_png_test(url: str) -> None:
     """Тест с PNG изображением"""
     print("=== Тест с PNG изображением ===")
     file_path = "uploads/p.jpg"  # Используем существующий файл
-    send_file(url, file_path, blur_amount=3, blur_type="pixelization")
+    options = {
+        'blur_type': 'motion',
+        'intensity': 3,
+        'object_types': ['person']
+    }
+    send_file(url, file_path, options)
 
 
 if __name__ == "__main__":
@@ -78,6 +93,6 @@ if __name__ == "__main__":
     
     run_face_test(args.url)
     print()
-    run_car_test(args.url)
+    # run_car_test(args.url)
     print()
     run_png_test(args.url)

@@ -57,7 +57,7 @@ async def upload_file(
     try:
         contents = await file.read()
         file_ext = file.filename.split(".")[-1].lower()
-        filename = generate_name_file(file.filename, file_ext)
+        filename = file.filename
         file_path = os.path.join(UPLOAD_FOLDER, filename)
         with open(file_path, "wb") as f:
             f.write(contents)
