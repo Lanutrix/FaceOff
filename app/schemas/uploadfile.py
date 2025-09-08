@@ -1,34 +1,40 @@
-from dataclasses import dataclass
-from typing import Optional, Any
+from typing import List, Literal, Union
 
-@dataclass
-class ResponseData:
-    filename: str
-    content_length: int
-    status: bool
-    
-    def __post_init__(self):
-        # Дополнительная валидация при необходимости
-        if self.content_length < 0:
-            raise ValueError("content_length не может быть отрицательным")
-        
-@dataclass
-class GetStatusFile:
-    filename: str
+from pydantic import BaseModel, Field
 
-@dataclass
-class AnswerGetStatusFile:
-    status: str
-    added_time: float
-    start_time: float
-    end_time: Optional[float] = None
-    error: Optional[str] = None
-    result: Optional[Any] = None
 
-if __name__ == "__main__":
-    # Пример использования
-    response = ResponseData(
-        filename="example.txt",
-        content_length=1024,
-        status=True
-    )
+class Options(BaseModel):
+    """Параметры обработки файла."""
+
+    blur_type: Literal["gaussian", "motion", "pixelate"]
+    intensity: int = Field(..., ge=1, le=10)
+    object_types: List[str] = Field(default_factory=list)
+
+
+class ProcessRequest(BaseModel):
+    """Схема входящего запроса на обработку файла."""
+
+    file_id: str
+    file_path: str
+    mime_type: str
+    options: Options
+
+
+class SuccessResponse(BaseModel):
+    """Ответ успешной обработки."""
+
+    success: Literal[True]
+    processed_path: str
+    processed_size: int
+    processing_time_ms: int
+
+
+class ErrorResponse(BaseModel):
+    """Ответ при возникновении ошибки."""
+
+    success: Literal[False]
+    error_message: str
+
+
+ProcessResponse = Union[SuccessResponse, ErrorResponse]
+

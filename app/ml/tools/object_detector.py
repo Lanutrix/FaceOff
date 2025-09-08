@@ -1,208 +1,181 @@
-from app.ml.tools.model import Model
-from app.ml.tools.write_box import BoxProcessor
-from typing import List, Optional, Union, Tuple
+import os
+from typing import List, Optional, Tuple, Union
+
 import cv2
 import numpy as np
-import os
 from moviepy.editor import VideoFileClip
 
-class MLObjectDetector:
-    """Главный класс модуля для детекции объектов в изображениях и видео"""
+from app.ml.tools.model import Model
+from app.ml.tools.write_box import BoxProcessor
 
-    def __init__(self, model_path: str = "yolov8n.pt", confidence_threshold: float = 0.5):
-        self.yolo_processor = Model(model_path, confidence_threshold)
+
+class MLObjectDetector:
+    """Класс, объединяющий несколько моделей для детекции объектов."""
+
+    def __init__(
+        self,
+        face_model_path: str = "models/yolov11m-face.pt",
+        general_model_path: str = "models/yolo11m.pt",
+        confidence_threshold: float = 0.5,
+    ) -> None:
+        self.face_model = Model(face_model_path, confidence_threshold)
+        self.general_model = Model(general_model_path, confidence_threshold)
         self.box_processor = BoxProcessor()
 
-    def initialize(self):
-        """Инициализация модуля"""
-        self.yolo_processor.load_model()
+    def initialize(self) -> None:
+        """Загрузка моделей."""
+        self.face_model.load_model()
+        self.general_model.load_model()
 
     def _get_output_filename(self, input_path: str) -> str:
-        """Генерирует имя выходного файла с суффиксом _blur"""
+        """Возвращает путь для сохранения результата с суффиксом _processed."""
         dir_name = os.path.dirname(input_path)
         base_name = os.path.basename(input_path)
         name, ext = os.path.splitext(base_name)
-        output_name = f"{name}_blur{ext}"
+        output_name = f"{name}_processed{ext}"
         return os.path.join(dir_name, output_name)
 
-    def detect_objects(self, image_source: Union[str, np.ndarray],
-                      min_area: Optional[int] = None,
-                      min_confidence: Optional[float] = None,
-                      blur_amount: int = 50,
-                      blur_type: str = "gaus") -> Tuple[List[dict], np.ndarray]:
-        """
-        Полный цикл детекции объектов для изображений
-        """
-        # Загружаем изображение если это путь
+    def _run_models(
+        self, image_source: Union[str, np.ndarray], object_types: List[str]
+    ) -> List[dict]:
+        boxes: List[dict] = []
+        run_face = not object_types or "face" in object_types
+        run_general = not object_types or any(obj != "face" for obj in object_types)
+
+        if run_face:
+            results = self.face_model.predict(image_source)
+            boxes.extend(self.face_model.extract_boxes(results))
+
+        if run_general:
+            results = self.general_model.predict(image_source)
+            boxes.extend(self.general_model.extract_boxes(results))
+
+        if object_types:
+            boxes = [b for b in boxes if b["class_name"] in object_types]
+
+        return boxes
+
+    def detect_objects(
+        self,
+        image_source: Union[str, np.ndarray],
+        object_types: List[str],
+        intensity: int,
+        blur_type: str,
+        min_area: Optional[int] = None,
+        min_confidence: Optional[float] = None,
+    ) -> Tuple[List[dict], np.ndarray]:
+        """Полный цикл детекции объектов для изображений."""
+
         if isinstance(image_source, str):
             image = cv2.imread(image_source)
         else:
             image = image_source
 
-        # Выполняем предсказание
-        results = self.yolo_processor.predict(image_source)
+        boxes_info = self._run_models(image_source, object_types)
 
-        # Извлекаем информацию о боксах
-        boxes_info = self.yolo_processor.extract_boxes(results)
-
-        # Применяем фильтры если заданы
         if min_area is not None:
             boxes_info = self.box_processor.filter_boxes_by_area(boxes_info, min_area)
-
         if min_confidence is not None:
-            boxes_info = self.box_processor.filter_boxes_by_confidence(boxes_info, min_confidence)
+            boxes_info = self.box_processor.filter_boxes_by_confidence(
+                boxes_info, min_confidence
+            )
 
-        # Рисуем боксы на изображении
-        result_image = self.box_processor.draw_boxes(image, boxes_info, blur_amount, blur_type)
-
+        result_image = self.box_processor.draw_boxes(
+            image, boxes_info, intensity, blur_type
+        )
         return boxes_info, result_image
 
-    def process_image(self, image_path: str,
-                     min_area: Optional[int] = None,
-                     min_confidence: Optional[float] = None,
-                     blur_amount: int = 50,
-                     blur_type: str = "gaus") -> str:
-        """
-        Обработка изображения с сохранением результата
-        """
+    def process_image(
+        self,
+        image_path: str,
+        object_types: List[str],
+        intensity: int,
+        blur_type: str,
+    ) -> str:
         boxes_info, result_image = self.detect_objects(
-            image_path, min_area, min_confidence, blur_amount, blur_type
+            image_path, object_types, intensity, blur_type
         )
-        
         output_path = self._get_output_filename(image_path)
         cv2.imwrite(output_path, result_image)
-        
-        print(f"Обработанное изображение сохранено: {output_path}")
         return output_path
 
-    def process_video(self, video_path: str,
-                     min_area: Optional[int] = None,
-                     min_confidence: Optional[float] = None,
-                     blur_amount: int = 50,
-                     blur_type: str = "gaus") -> str:
-        """
-        Обработка видео с сохранением результата и звука
-        """
-        print(f"Начинается обработка видео: {video_path}")
-        
-        # Открываем видео для чтения
+    def process_video(
+        self,
+        video_path: str,
+        object_types: List[str],
+        intensity: int,
+        blur_type: str,
+    ) -> str:
         cap = cv2.VideoCapture(video_path)
-        
         if not cap.isOpened():
             raise ValueError(f"Не удалось открыть видео файл: {video_path}")
 
-        # Получаем параметры видео
         fps = int(cap.get(cv2.CAP_PROP_FPS))
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        # Создаем временный файл для видео без звука
-        temp_output = self._get_output_filename(video_path).replace('.', '_temp.')
-        
-        # Настраиваем кодек для записи видео
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        temp_output = self._get_output_filename(video_path).replace(".", "_temp.")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         out = cv2.VideoWriter(temp_output, fourcc, fps, (width, height))
 
-        frame_count = 0
-        
         try:
             while True:
                 ret, frame = cap.read()
                 if not ret:
                     break
-                
-                # Обрабатываем кадр
-                boxes_info, processed_frame = self.detect_objects(
-                    frame, min_area, min_confidence, blur_amount, blur_type
+                _, processed_frame = self.detect_objects(
+                    frame, object_types, intensity, blur_type
                 )
-                
-                # Записываем обработанный кадр
                 out.write(processed_frame)
-                
-                frame_count += 1
-
         finally:
             cap.release()
             out.release()
 
-        print(f"Видео обработано, добавляется звук...")
-        
-        # Добавляем звук к обработанному видео
         output_path = self._add_audio_to_video(video_path, temp_output)
-        
-        # Удаляем временный файл
         if os.path.exists(temp_output):
             os.remove(temp_output)
-        
-        print(f"Обработанное видео с звуком сохранено: {output_path}")
         return output_path
 
     def _add_audio_to_video(self, original_video_path: str, processed_video_path: str) -> str:
-        """
-        Добавляет звук из оригинального видео к обработанному
-        """
         output_path = self._get_output_filename(original_video_path)
-        
         try:
-            # Загружаем оригинальное видео для извлечения аудио
             original_clip = VideoFileClip(original_video_path)
-            
-            # Загружаем обработанное видео
             processed_clip = VideoFileClip(processed_video_path)
-            
-            # Проверяем наличие аудио в оригинальном видео
             if original_clip.audio is not None:
-                # Добавляем аудио к обработанному видео
                 final_clip = processed_clip.set_audio(original_clip.audio)
             else:
-                print("Оригинальное видео не содержит аудио")
                 final_clip = processed_clip
-            
-            # Сохраняем результат
             final_clip.write_videofile(
-                output_path, 
-                codec='libx264',
-                audio_codec='aac',
-                temp_audiofile='{output_path}-temp-audio.m4a',
-                remove_temp=True
+                output_path,
+                codec="libx264",
+                audio_codec="aac",
+                temp_audiofile="{output_path}-temp-audio.m4a",
+                remove_temp=True,
             )
-            
-            # Освобождаем ресурсы
             original_clip.close()
             processed_clip.close()
             final_clip.close()
-            
-        except Exception as e:
-            print(f"Ошибка при добавлении аудио: {e}")
-            # Если не удалось добавить аудио, просто переименовываем файл
+        except Exception:
             os.rename(processed_video_path, output_path)
-        
         return output_path
 
-    def process_file(self, file_path: str,
-                    min_area: Optional[int] = None,
-                    min_confidence: Optional[float] = None,
-                    blur_amount: int = 50,
-                    blur_type: str = "gaus") -> str:
-        """
-        Универсальный метод для обработки файлов (изображений или видео)
-        """
-        file_path = f"uploads/{file_path}"
-        
+    def process_file(
+        self,
+        file_path: str,
+        object_types: List[str],
+        intensity: int,
+        blur_type: str,
+    ) -> str:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Файл не найден: {file_path}")
-        
-        # Определяем тип файла по расширению
+
         file_ext = os.path.splitext(file_path)[-1].lower()
-        
-        # Поддерживаемые форматы
-        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif'}
-        video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv'}
-        
+        image_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"}
+        video_extensions = {".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv"}
+
         if file_ext in image_extensions:
-            return self.process_image(file_path, min_area, min_confidence, blur_amount, blur_type)
-        elif file_ext in video_extensions:
-            return self.process_video(file_path, min_area, min_confidence, blur_amount, blur_type)
-        else:
-            raise ValueError(f"Неподдерживаемый формат файла: {file_ext}")
+            return self.process_image(file_path, object_types, intensity, blur_type)
+        if file_ext in video_extensions:
+            return self.process_video(file_path, object_types, intensity, blur_type)
+        raise ValueError(f"Неподдерживаемый формат файла: {file_ext}")
+
