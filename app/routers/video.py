@@ -52,6 +52,7 @@ async def upload_file(
     file: UploadFile = File(...),
     blur_amount: int = Form(..., ge=1, le=10),
     blur_type: str = Form(...),
+    object_types: str = Form(...),
 ) -> ProcessResponse:
     start = time.time()
     try:
@@ -76,11 +77,20 @@ async def upload_file(
                 error_message="Unsupported blur type",
             )
 
+        # Создаем объект Options
+        from app.schemas.uploadfile import Options
+        object_types_list = [obj.strip() for obj in object_types.split(",") if obj.strip()]
+        options = Options(
+            blur_type=mapped_blur,
+            intensity=blur_amount,
+            object_types=object_types_list
+        )
+
         processed_path = detector.process_file(
             file_path,
-            [],
-            blur_amount,
-            mapped_blur,
+            options.object_types,
+            options.intensity,
+            options.blur_type,
         )
         processed_size = os.path.getsize(processed_path)
         processing_time_ms = int((time.time() - start) * 1000)

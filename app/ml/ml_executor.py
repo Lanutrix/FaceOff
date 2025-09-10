@@ -1,5 +1,6 @@
 
 from app.ml.tools.object_detector import MLObjectDetector
+from app.schemas.uploadfile import Options
 import queue
 import threading
 import time
@@ -49,14 +50,13 @@ class MLExecutor:
         if self._worker_thread:
             self._worker_thread.join()
             
-    def add_to_queue(self, filename: str, intensity: int, blur_type: str) -> bool:
+    def add_to_queue(self, filename: str, options: 'Options') -> bool:
         """
         Добавить файл в очередь на обработку.
 
         Args:
             filename: Имя файла для обработки
-            intensity: Степень размытия от 1 до 10
-            blur_type: Тип размытия
+            options: Объект Options с параметрами обработки
 
         Returns:
             True если файл добавлен, False если уже в обработке
@@ -77,7 +77,7 @@ class MLExecutor:
                 "error": None,
                 "result": None
             }
-        self._file_queue.put((filename, intensity, blur_type))
+        self._file_queue.put((filename, options))
         return True
         
     def get_status(self, filename: str) -> Optional[Dict[str, Any]]:
@@ -128,7 +128,7 @@ class MLExecutor:
         while self._running:
             try:
                 # Получаем файл из очереди с таймаутом
-                filename, intensity, blur_type = self._file_queue.get(timeout=1)
+                filename, options = self._file_queue.get(timeout=1)
                 
                 # Обновляем статус на "обрабатывается"
                 with self._status_lock:
@@ -140,9 +140,9 @@ class MLExecutor:
                     # Выполняем обработку файла
                     result = self.detector.process_file(
                         filename,
-                        [],  # все поддерживаемые типы объектов
-                        intensity,
-                        blur_type,
+                        options.object_types,
+                        options.intensity,
+                        options.blur_type,
                     )
                     result = result.replace('\\', '/')
                     # Обновляем статус на "завершено"
@@ -186,7 +186,8 @@ if __name__ == "__main__":
     # Добавляем файлы в очередь
     files = ["image.jpg", "video.mp4"]
     for file in files:
-        success = processor.add_to_queue(file, 5, "gaussian")
+        options = Options(blur_type="gaussian", intensity=5, object_types=[])
+        success = processor.add_to_queue(file, options)
         print(f"Файл {file} {'добавлен' if success else 'уже в обработке'}")
     
     # Проверяем статусы

@@ -39,14 +39,14 @@ class MLObjectDetector:
         self, image_source: Union[str, np.ndarray], object_types: List[str]
     ) -> List[dict]:
         boxes: List[dict] = []
-        run_face = not object_types or "face" in object_types
-        run_general = not object_types or any(obj != "face" for obj in object_types)
+        run_face = "face" in object_types
+        run_general = set(object_types)|set(self.general_model.class_names.values())
 
         if run_face:
             results = self.face_model.predict(image_source)
             boxes.extend(self.face_model.extract_boxes(results))
 
-        if run_general:
+        if len(run_general)!=0:
             results = self.general_model.predict(image_source)
             boxes.extend(self.general_model.extract_boxes(results))
 

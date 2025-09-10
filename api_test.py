@@ -27,7 +27,8 @@ def send_file(url: str, file_path: str, options: dict) -> None:
             files = {'file': f}
             data = {
                 'blur_amount': options['intensity'],
-                'blur_type': options['blur_type']
+                'blur_type': options['blur_type'],
+                'object_types': ','.join(options['object_types'])
             }
             r = requests.post(url, files=files, data=data, timeout=3000)
             print(f"Статус: {r.status_code}")
@@ -68,7 +69,7 @@ def run_car_test(url: str) -> None:
     options = {
         'blur_type': 'pixelate',
         'intensity': 8,
-        'object_types': ['car', 'truck']
+        'object_types': ['person']
     }
     send_file(url, file_path, options)
 
@@ -76,11 +77,11 @@ def run_car_test(url: str) -> None:
 def run_png_test(url: str) -> None:
     """Тест с PNG изображением"""
     print("=== Тест с PNG изображением ===")
-    file_path = "uploads/p.jpg"  # Используем существующий файл
+    file_path = "uploads/p.png"  # Используем существующий файл
     options = {
         'blur_type': 'motion',
-        'intensity': 3,
-        'object_types': ['person']
+        'intensity': 10,
+        'object_types': ['car', 'truck', 'face']
     }
     send_file(url, file_path, options)
 
