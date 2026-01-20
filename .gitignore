@@ -13,7 +13,7 @@ models/
 *.mkv
 *.wmv
 *.flv
-
+!diplom.jpg
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
